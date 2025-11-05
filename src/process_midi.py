@@ -76,7 +76,7 @@ def extract_note_data(midi_data, beat_times, measure_times):
                 "note_name": note_name,
                 "note_simple": note_simple,
                 "octave": octave,
-                "measure_name": measure_num,
+                "measure_num": measure_num,
                 "beat_num": beat_num,
                 "start_time_sec": note.start,
                 "end_time_sec": note.end,
