@@ -64,6 +64,7 @@ def extract_note_data(midi_data):
     print(f"Successfully extracted {len(all_notes)} total notes")
     return all_notes
 
+
 def main():
     """
     Main function to run the script.
@@ -78,11 +79,17 @@ def main():
             all_note_data = extract_note_data(midi_data)
 
             if all_note_data:
-                print("\n--- SUCCESS! ----")
-                print(f"First 5 notes extracted:")
-                for note in all_note_data[0:5]:
-                    print(note)
+                # 1. Convert the list of dictionaries to a DataFrame
+                df = pd.DataFrame(all_note_data)
 
+                # 2. Print the first 5 rows as a preview
+                print("DataFrame .head() preview:")
+                print(df.head())
+
+                # 3. Print the info aobut the DataFrame (columns, dtypes)
+                print("\nDataFrame .info():")
+                df.info()
+                
         except Exception as e:
             print(f"\nAn error occurred while loading the file: {e}")
 
