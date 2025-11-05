@@ -1,6 +1,7 @@
 import pretty_midi
 import pandas as pd
 from pathlib import Path
+import bisect
 
 # --- 1. Define file paths ---
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -30,7 +31,7 @@ def find_midi_file(search_dir):
         print(f"Found one file: {file_to_load.name}")
         return file_to_load
     
-def extract_note_data(midi_data):
+def extract_note_data(midi_data, beat_times, measure_times):
     """
     Loops through all instruments and notes, returning a list of dictionaries.
     """
@@ -46,13 +47,22 @@ def extract_note_data(midi_data):
         # Loop over all notes for this instrument
         for note in instrument.notes:
             
-            # Get all the data for this single note
+            note_name = pretty_midi.note_number_to_name(note.pitch)
+            
+            # Find the insert point for the not's start time in our "rulers"
+            # bisect_right gives us the index of the bucket the note falls into
+            measure_num = bisect.bisect_right(measure_times, note.start)
+            beat_num = bisect.bisect_right(beat_times, note.start)
+
             note_data = {
                 "track_index": i,
                 "track_name": instrument.name,
                 "instrument": instrument_name,
                 "is_drum": instrument.is_drum,
                 "pitch_num": note.pitch,
+                "note_name": note_name,
+                "measure_name": measure_num,
+                "beat_num": beat_num,
                 "start_time_sec": note.start,
                 "end_time_sec": note.end,
                 "duration_sec": note.duration,
@@ -96,7 +106,22 @@ def main():
             midi_data = pretty_midi.PrettyMIDI(str(file_path))
             print("File loaded successfully.")
 
-            all_note_data = extract_note_data(midi_data)
+            print("\n --- Analyzing Rhythm Grid ---")
+
+            # 1. Get list of all beat start times
+            beat_times = midi_data.get_beats()
+
+            # 2. Get the list of all measure (downbeat) start times
+            measure_times = midi_data.get_downbeats()
+
+            print(f"Found {len(beat_times)} total beats (grid lines).")
+            print(f"Found {len(measure_times)} total measures (bars).")
+
+            # 3. Print the first 5 of each to see what they look like
+            print(f"First 5 beat times (in seconds): {beat_times[0:5]}")
+            print(f"First 5 measure times (in seconds): {measure_times[0:5]}")
+                        
+            all_note_data = extract_note_data(midi_data, beat_times, measure_times)
 
             if all_note_data:
                 # 1. Convert list to DataFrame
