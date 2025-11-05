@@ -5,6 +5,7 @@ from pathlib import Path
 # --- 1. Define file paths ---
 BASE_DIR = Path(__file__).resolve().parent.parent
 RAW_DATA_DIR = BASE_DIR / "data" / "raw"
+PROCESSED_DATA_DIR = BASE_DIR / "data" / "processed"
 
 def find_midi_file(search_dir):
     """
@@ -14,7 +15,6 @@ def find_midi_file(search_dir):
 
     midi_files = list(search_dir.glob("*.mid*"))
 
-    # --- 3. Check identified files ---
     if len(midi_files) == 0:
         print("\n--- ERROR ---")
         print(f"No MIDI files (.mid or .midi) found in {search_dir}.")
@@ -64,6 +64,26 @@ def extract_note_data(midi_data):
     print(f"Successfully extracted {len(all_notes)} total notes")
     return all_notes
 
+def save_data_to_csv(df, output_dir, file_name):
+    """
+    Saves a DataFrame to a CSV file in a specified directory.
+    """
+    print("\n--- Saving DataFrame to CSV ---")
+
+    # 1. Ensure the output directory exists
+    # We create it if it's not already there
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # 2. Defne the full path for the file
+    output_path = output_dir / file_name
+    
+    # 3. Save the DataFrame to CSV
+    # Use index=False to avoid extra column added by pandas with row numbers
+    df.to_csv(output_path, index=False)
+
+    print("--- Success! ---")
+    print(f"Data saved to: {output_path}")
+
 
 def main():
     """
@@ -79,17 +99,16 @@ def main():
             all_note_data = extract_note_data(midi_data)
 
             if all_note_data:
-                # 1. Convert the list of dictionaries to a DataFrame
+                # 1. Convert list to DataFrame
                 df = pd.DataFrame(all_note_data)
 
-                # 2. Print the first 5 rows as a preview
-                print("DataFrame .head() preview:")
+                # 2. Call the new save function
+                save_data_to_csv(df, PROCESSED_DATA_DIR, "rhcp_dosed_notes.csv")
+
+                # 3. Print .head()
+                print("Final .head() preview:")
                 print(df.head())
 
-                # 3. Print the info aobut the DataFrame (columns, dtypes)
-                print("\nDataFrame .info():")
-                df.info()
-                
         except Exception as e:
             print(f"\nAn error occurred while loading the file: {e}")
 
