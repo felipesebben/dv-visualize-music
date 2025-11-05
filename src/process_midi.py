@@ -54,6 +54,19 @@ def extract_note_data(midi_data, beat_times, measure_times):
             measure_num = bisect.bisect_right(measure_times, note.start)
             beat_num = bisect.bisect_right(beat_times, note.start)
 
+            # Slice note_name to split 'E5' to note and octave
+            # 1. Get the simple note. This is everything except the last character
+            note_simple = note_name[:-1]
+
+            # 2. Get the octave. This is only the last character.
+            # Cast it into an integer.
+            try:
+                octave = int(note_name[-1])
+            except ValueError:
+                # In case a note name is not valid (e.g., for drums),
+                # set the octave to None
+                octave = None
+
             note_data = {
                 "track_index": i,
                 "track_name": instrument.name,
@@ -61,6 +74,8 @@ def extract_note_data(midi_data, beat_times, measure_times):
                 "is_drum": instrument.is_drum,
                 "pitch_num": note.pitch,
                 "note_name": note_name,
+                "note_simple": note_simple,
+                "octave": octave,
                 "measure_name": measure_num,
                 "beat_num": beat_num,
                 "start_time_sec": note.start,
