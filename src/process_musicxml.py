@@ -40,9 +40,40 @@ def main():
     file_path = find_musicxml_file(RAW_DATA_DIR)
 
     if file_path:
-        print("\n--- SUCCESS! ---")
-        print(f"File finder is working. Path found: {file_path}")
+        print(f"\nFile finder is working. Path found: {file_path}.")
+        # 'converter.parse' loads the file.
+        # It can handle .mxl, .xml, and .mid files
+        try:
+            print("Loading and parsing the file with music21...")
+            song = m21.converter.parse(file_path)
+            
+            print("\n--- SUCCESS! ---")
+            print("File loaded and parsed successfully.")
 
+            print("\n --- Reading Metadata ---")
+
+            # The object has a '.metadata' attribute
+            if song.metadata:
+                print(f"    Song Title: {song.metadata.title}")
+                print(f"    Composer: {song.metadata.composer}")
+            else:
+                print(" No metadata found in this file.")
+        
+            if song.parts:
+                print(f"Found {len(song.parts)} parts (instruments in this file)")
+
+                # Loop through each part and print their names.
+                for part in song.parts:
+                    print(f"    - Part Name: {part.partName}")
+            
+            else:
+                print(" Could not find any parts in this file.")
+
+
+        except Exception as e:
+            print("\n--- ERROR ---")
+            print(f"An error occurred while loading the file: {e}")
+    
     else:
         print("\n--- TEST FAILED ---")
         print(f"File finder did not return a path")
