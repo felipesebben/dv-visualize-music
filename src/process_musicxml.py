@@ -1,9 +1,11 @@
 from pathlib import Path
 import music21 as m21
+import pandas as pd
 
 # --- 1. Define File Paths ---
 BASE_DIR = Path(__file__).resolve().parent.parent
 RAW_DATA_DIR = BASE_DIR / "data" / "raw"
+PROCESSED_DATA_DIR = BASE_DIR / "data" / "processed"
 
 def  find_musicxml_file(search_dir):
     """
@@ -31,6 +33,92 @@ def  find_musicxml_file(search_dir):
         print(f"Found one file: {file_to_load.name}")
         return file_to_load
 
+def extract_musicxml_data(score):
+    """
+    Loops through all parts in the score and extracts data.
+    """
+    print("\n--- Extracting Data from All Parts ---")
+
+    # Empty list to hold the list of dictionaries
+    all_data = []
+
+    # Outer loop - iterate over each instrument part
+    for i, part in enumerate(score.parts):
+        print(f"    - Processing Part {i +1}/{len(score.parts)}: {part.partName}")
+
+        # Get all notes, chords, and rests from the iterated part
+        all_items = part.flatten().notesAndRests
+
+        # Iterate over each item (note/chord/rest)
+        for item in all_items:
+
+            # Case 1: the item is a single note
+            if isinstance(item, m21.note.Note):
+                note_data = {
+                    "part_index": i,
+                    "part_name": part.partName,
+                    "type": "Note",
+                    "pitch_name": item.nameWithOctave,
+                    "pitch_simple": item.pitch.name,
+                    "octave": item.pitch.octave,
+                    "beat": item.beat,
+                    "duration_beats": item.duration.quarterLength,
+                    "offset_beats": item.offset,
+                }
+                all_data.append(note_data)
+            
+            # Case 2: the item is a chord
+            if isinstance(item, m21.chord.Chord):
+                # Loop through each note and add a separate row for each note in the chord.
+                for pitch in item.pitches:
+                    note_data = {
+                        "part_index": i,
+                        "part_name": part.partName,
+                        "type": "Chord Note",
+                        "pitch_name": pitch.nameWithOctave,
+                        "pitch_simple": pitch.name,
+                        "octave": pitch.octave,
+                        "beat": item.beat,
+                        "duration_beats": item.duration.quarterLength,
+                        "offset_beats": item.offset,
+                    }
+                    all_data.append(note_data)
+
+    print(f"--- Finished processing. Found {len(all_data)} total notes. ---")
+    return all_data
+
+def clean_dataframe(df):
+    """
+    Cleans the DataFrame, converting data types.
+    """
+    print(f"\n--- Cleaning DataFrame ---")
+
+    # Define columns that should be numbers
+    numeric_cols = ["beat", "duration_beats", "offset_beats"]
+
+    for col in numeric_cols:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    
+    print(f"DataFrame successfully cleaned.")
+    return df
+
+def save_data_to_csv(df, output_dir, file_name):
+    """
+    Saves a DataFrame to a CSV file in a specified directory.
+    """
+    print("\n--- Saving Cleaned DataFrame to CSV ---")
+
+    # Ensure the directory exists
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Define the full path for the file
+    output_path = output_dir / file_name
+
+    # Save the df to CSV
+    df.to_csv(output_path, index=False)
+
+    print("--- Success! ---")
+    print(f"Clean data saved to: {output_path}")
 
 def main():
     """
@@ -41,35 +129,31 @@ def main():
 
     if file_path:
         print(f"\nFile finder is working. Path found: {file_path}.")
-        # 'converter.parse' loads the file.
-        # It can handle .mxl, .xml, and .mid files
+
         try:
             print("Loading and parsing the file with music21...")
-            song = m21.converter.parse(file_path)
+            score = m21.converter.parse(file_path)
             
             print("\n--- SUCCESS! ---")
             print("File loaded and parsed successfully.")
 
-            print("\n --- Reading Metadata ---")
+            all_note_data = extract_musicxml_data(score)
 
-            # The object has a '.metadata' attribute
-            if song.metadata:
-                print(f"    Song Title: {song.metadata.title}")
-                print(f"    Composer: {song.metadata.composer}")
-            else:
-                print(" No metadata found in this file.")
-        
-            if song.parts:
-                print(f"Found {len(song.parts)} parts (instruments in this file)")
+            if all_note_data:
+                print("\n--- Converting to DataFrame ---")
 
-                # Loop through each part and print their names.
-                for part in song.parts:
-                    print(f"    - Part Name: {part.partName}")
-            
-            else:
-                print(" Could not find any parts in this file.")
+                df_raw = pd.DataFrame(all_note_data)
 
+                # Pass the raw df to the cleaning function
+                df_clean = clean_dataframe(df_raw)
+ 
+                # Save the clean DataFrame
+                save_data_to_csv(df_clean, PROCESSED_DATA_DIR, "rhcp-dosed_musicmxl_notes.csv")
 
+                print("\n--- Pipeline Complete ---")
+                print("Final DataFrame .head() preview:")
+                print(df_clean.head())
+                
         except Exception as e:
             print("\n--- ERROR ---")
             print(f"An error occurred while loading the file: {e}")
