@@ -2,7 +2,36 @@ from pathlib import Path
 import music21 as m21
 import pandas as pd
 
-# --- 1. Define File Paths ---
+
+# Add dictionaries to enrich data
+INSTRUMENT_MAP = {
+    "Violín": 'Lead Guitar (Riff)',
+    "Voz": "Lead Vocals",
+    "(Back Vocals)": "Backing Vocals",
+    "Guitar 1": "Guitar 1",
+    "Guitar 2": "Guitar 2",
+    "Guitar 3": "Guitar 3",
+    "Guitar 4": "Guitar 4",
+    "Piano": "Piano",
+    "Bajo Elec.": "Electric Bass",
+    "Batería": "Drums"
+}
+
+# Map of part names to the artist
+ARTIST_MAP = {
+    "Violín": 'John Frusciante',
+    "Voz": "Anthony Kiedis",
+    "(Back Vocals)": "John Frusciante",
+    "Guitar 1": "John Frusciante",
+    "Guitar 2": "John Frusciante",
+    "Guitar 3": "John Frusciante",
+    "Guitar 4": "John Frusciante",
+    "Piano": "John Frusciante",
+    "Bajo Elec.": "Flea",
+    "Batería": "Chad Smith"
+}
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 RAW_DATA_DIR = BASE_DIR / "data" / "raw"
 PROCESSED_DATA_DIR = BASE_DIR / "data" / "processed"
@@ -99,6 +128,12 @@ def clean_dataframe(df):
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     
+    # Create the new instrument_en column by mapping part_name
+    df["instrument_en"] = df["part_name"].map(INSTRUMENT_MAP)
+
+    # Create the new artist column by mapping part_name
+    df["artist"] = df["part_name"].map(ARTIST_MAP)
+
     print(f"DataFrame successfully cleaned.")
     return df
 
@@ -134,7 +169,7 @@ def main():
             print("Loading and parsing the file with music21...")
             score = m21.converter.parse(file_path)
             
-            print("\n--- SUCCESS! ---")
+            print("\n--- Success! ---")
             print("File loaded and parsed successfully.")
 
             all_note_data = extract_musicxml_data(score)
@@ -142,6 +177,7 @@ def main():
             if all_note_data:
                 print("\n--- Converting to DataFrame ---")
 
+                #  Extract data
                 df_raw = pd.DataFrame(all_note_data)
 
                 # Pass the raw df to the cleaning function
