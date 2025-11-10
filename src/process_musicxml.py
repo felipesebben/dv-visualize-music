@@ -14,7 +14,7 @@ INSTRUMENT_MAP = {
     "Guitar 4": "Guitar 4",
     "Piano": "Piano",
     "Bajo Elec.": "Electric Bass",
-    "Batería": "Drums"
+    "Batería": "Drums",
 }
 
 # Map of part names to the artist
@@ -28,7 +28,7 @@ ARTIST_MAP = {
     "Guitar 4": "John Frusciante",
     "Piano": "John Frusciante",
     "Bajo Elec.": "Flea",
-    "Batería": "Chad Smith"
+    "Batería": "Chad Smith",
 }
 
 
@@ -87,6 +87,7 @@ def extract_musicxml_data(score):
                     "part_index": i,
                     "part_name": part.partName,
                     "type": "Note",
+                    "pitch_num": item.pitch.midi,
                     "pitch_name": item.nameWithOctave,
                     "pitch_simple": item.pitch.name,
                     "octave": item.pitch.octave,
@@ -97,13 +98,14 @@ def extract_musicxml_data(score):
                 all_data.append(note_data)
             
             # Case 2: the item is a chord
-            if isinstance(item, m21.chord.Chord):
+            elif isinstance(item, m21.chord.Chord):
                 # Loop through each note and add a separate row for each note in the chord.
                 for pitch in item.pitches:
                     note_data = {
                         "part_index": i,
                         "part_name": part.partName,
                         "type": "Chord Note",
+                        "pitch_num": pitch.midi,
                         "pitch_name": pitch.nameWithOctave,
                         "pitch_simple": pitch.name,
                         "octave": pitch.octave,
@@ -112,6 +114,49 @@ def extract_musicxml_data(score):
                         "offset_beats": item.offset,
                     }
                     all_data.append(note_data)
+            # Case 3: the item is a single drum hit
+            elif isinstance(item, m21.note.Unpitched):
+                try:
+                    p = m21.pitch.Pitch(item.displayStep + str(item.displayOctave))
+                    pitch_num = p.midi
+                    pitch_name = p.nameWithOctave
+                    pitch_simple = p.name
+                    octave = p.octave
+                except Exception:
+                    pitch_num = None
+                    pitch_name = item.displayName or "Drum"
+                    pitch_simple = item.displayName or "Drum"
+                    octave = None
+                note_data = {
+                    "part_index": i,
+                    "part_name": part.partName,
+                    "type": "Drum Hit",
+                    "pitch_num": pitch_num,
+                    "pitch_name": pitch_name,
+                    "pitch_simple": pitch_simple,
+                    "octave": octave,
+                    "beat": item.beat,
+                    "duration_beats": item.duration.quarterLength,
+                    "offset_beats": item.offset,
+                }
+                all_data.append(note_data)      
+
+            # Case 4: the item is a drum chord
+            elif isinstance(item, m21.percussion.PercussionChord):
+                for pitch in item.pitches:
+                    note_data = {
+                        "part_index": i,
+                        "part_name": part.partName,
+                        "type": "Drum Chord Hit",
+                        "pitch_num": pitch.midi,
+                        "pitch_name": pitch.nameWithOctave,
+                        "pitch_simple": pitch.name,
+                        "octave": pitch.octave,
+                        "beat": item.beat,
+                        "duration_beats": item.duration.quarterLength,
+                        "offset_beats": item.offset,
+                    }                   
+
 
     print(f"--- Finished processing. Found {len(all_data)} total notes. ---")
     return all_data
@@ -189,6 +234,8 @@ def main():
                 print("\n--- Pipeline Complete ---")
                 print("Final DataFrame .head() preview:")
                 print(df_clean.head())
+
+                print(df_clean.loc[df_clean["part_name"] == "Batería"])
                 
         except Exception as e:
             print("\n--- ERROR ---")
